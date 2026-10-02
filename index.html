@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathMate - AI Math Tutor</title>
+  
+  <!-- Optional KaTeX Library for rendering math notation nicely -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+  <style>
+    /* ==========================================
+       1. BASE STYLES & COLOR SCHEME
+       ========================================== */
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --accent-color: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --user-msg-bg: #0284c7;
+      --bot-msg-bg: #1e293b;
+    }
+
+    /* Light Theme Toggle Support */
+    body.light-mode {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --accent-color: #0284c7;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --user-msg-bg: #0284c7;
+      --bot-msg-bg: #f1f5f9;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 750px;
+      background: var(--card-bg);
+      padding: 28px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Header & Controls */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .app-title h1 {
+      font-size: 1.8rem;
+      color: var(--accent-color);
+    }
+
+    .app-title p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    /* Input Controls */
+    .controls-grid {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .difficulty-select {
+      background: var(--bg-color);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    textarea {
+      width: 100%;
+      height: 90px;
+      background: var(--bg-color);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 0.95rem;
+      resize: vertical;
+      outline: none;
+      margin-bottom: 12px;
+    }
+
+    textarea:focus {
+      border-color: var(--accent-color);
+    }
+
+    .ask-btn {
+      width: 100%;
+      background-color: var(--accent-color);
+      color: #0f172a;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s, background-color 0.2s;
+    }
+
+    .ask-btn:hover {
+      opacity: 0.9;
+    }
+
+    .ask-btn:disabled {
+      background-color: var(--border-color);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    /* Message Output / History */
+    .response-container {
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .message-card {
+      padding: 16px;
+      border-radius: 12px;
+      line-height: 1.6;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+    }
+
+    .user-card {
+      background: var(--user-msg-bg);
+      color: #ffffff;
+      align-self: flex-end;
+      width: 90%;
+    }
+
+    .tutor-card {
+      background: var(--bot-msg-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      align-self: flex-start;
+      width: 100%;
+    }
+
+    .tutor-card h4 {
+      color: var(--accent-color);
+      margin-bottom: 8px;
+    }
+
+    /* Loader & Errors */
+    .loader {
+      display: none;
+      text-align: center;
+      padding: 16px;
+      color: var(--accent-color);
+      font-weight: 600;
+    }
+
+    .error-card {
+      display: none;
+      background-color: #7f1d1d;
+      color: #fca5a5;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 0.9rem;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 600px) {
+      .app-container {
+        padding: 18px;
+      }
+      .top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Header -->
+    <div class="top-bar">
+      <div class="app-title">
+        <h1>MathMate 🧮</h1>
+        <p>Your AI-powered interactive math tutor</p>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">☀️ / 🌙 Mode</button>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-grid">
+      <select id="difficulty" class="difficulty-select">
+        <option value="grade_6">Target Level: Explain like I'm in Grade 6</option>
+        <option value="high_school" selected>Target Level: High School / Standard</option>
+        <option value="a_level">Target Level: Explain like I'm in A Level / College</option>
+      </select>
+    </div>
+
+    <!-- Text Input -->
+    <textarea id="question-input" placeholder="Type your math question here... (e.g. How do I factor x^2 - 5x + 6?)"></textarea>
+    
+    <!-- Submit Button -->
+    <button id="ask-btn" class="ask-btn" onclick="askTutor()">Ask Tutor</button>
+
+    <!-- Error Banner -->
+    <div id="error-message" class="error-card"></div>
+
+    <!-- Loading Spinner / Text -->
+    <div id="loader" class="loader">
+      <span>Thinking & solving step-by-step... 🧠</span>
+    </div>
+
+    <!-- Response & Conversation History -->
+    <div id="response-container" class="response-container"></div>
+  </div>
+
+  <script>
+    // 🔑 Replace this with your actual Groq API key (Keep blank when submitting assignment)
+    const GROQ_API_KEY = "YOUR_GROQ_API_KEY_HERE";
+
+    // Theme Toggle
+    function toggleTheme() {
+      document.body.classList.toggle("light-mode");
+    }
+
+    // Core Function: Send Question to Groq API
+    async function askTutor() {
+      const inputEl = document.getElementById("question-input");
+      const askBtn = document.getElementById("ask-btn");
+      const loader = document.getElementById("loader");
+      const errorEl = document.getElementById("error-message");
+      const responseContainer = document.getElementById("response-container");
+      const difficulty = document.getElementById("difficulty").value;
+
+      const userQuestion = inputEl.value.trim();
+
+      // Validate non-empty input
+      if (!userQuestion) {
+        alert("Please enter a math question before clicking Ask.");
+        return;
+      }
+
+      // Hide prior errors & show loading state
+      errorEl.style.display = "none";
+      loader.style.display = "block";
+      askBtn.disabled = true;
+      askBtn.innerText = "Thinking...";
+
+      // Render User Question in UI
+      const userCard = document.createElement("div");
+      userCard.className = "message-card user-card";
+      userCard.textContent = Q: ${userQuestion};
+      responseContainer.appendChild(userCard);
+
+      // Customize System Prompt based on chosen difficulty level
+      let levelInstruction = "Explain step-by-step using clear, simple standard high school math concepts.";
+      if (difficulty === "grade_6") {
+        levelInstruction = "Explain like the student is in 6th grade. Keep language extremely simple, clear, and encouraging.";
+      } else if (difficulty === "a_level") {
+        levelInstruction = "Provide advanced explanations suitable for an A-Level/College math student, including rigorous proofs or notation where appropriate.";
+      }
+
+      const systemPrompt = You are a patient, encouraging, and helpful math tutor named MathMate. Your goal is to guide students step-by-step through solving math problems rather than just giving the final answer immediately. ${levelInstruction};
+
+      try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": Bearer ${GROQ_API_KEY}
+          },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userQuestion }
+            ]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(API Request Failed with status ${response.status}. Please verify your API key.);
+        }
+
+        const data = await response.json();
+        const tutorReply = data.choices[0]?.message?.content || "No explanation returned.";
+
+        // Render Tutor Response in UI
+        const tutorCard = document.createElement("div");
+        tutorCard.className = "message-card tutor-card";
+        
+        const title = document.createElement("h4");
+        title.innerText = "MathMate Tutor:";
+        
+        const content = document.createElement("div");
+        content.innerText = tutorReply;
+
+        tutorCard.appendChild(title);
+        tutorCard.appendChild(content);
+        responseContainer.appendChild(tutorCard);
+
+        // Clear Input Field
+        inputEl.value = "";
+
+      } catch (err) {
+        errorEl.innerText = Error: ${err.message};
+        errorEl.style.display = "block";
+      } finally {
+        // Reset Button & Hide Loader
+        loader.style.display = "none";
+        askBtn.disabled = false;
+        askBtn.innerText = "Ask Tutor";
+        responseContainer.scrollTop = responseContainer.scrollHeight;
+      }
+    }
+  </script>
+</body>
+</html>
